@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- ★ viewport に viewport-fit=cover を指定（iPhoneのノッチ回避用） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <title>株価にドキリ！</title>
+
+    <!-- ★ ここから追加：URLによってPWAアプリを切り替えるスクリプト -->
+    <script>
+      (function() {
+        var isManagement = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/terminal');
+        var manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = isManagement ? '/manifest-admin.json' : '/manifest-user.json';
+        document.head.appendChild(manifestLink);
+      })();
+    </script>
+    <!-- ★ ここまで -->
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,159 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ユーティリティ関数
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.coreAdmin == true ||
+        request.auth.token.terminalAdmin == true ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)))
+      );
+    }
+
+    function isCoreAdmin() {
+      return isSignedIn() && (
+        request.auth.token.coreAdmin == true ||
+        (request.auth.token.email != null && 
+         exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) && 
+         get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == "core")
+      );
+    }
+
+    function isInsiderUser() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.courseType == "INSIDER";
+    }
+
+    // 管理者はすべてのドキュメントへのフルアクセスを持つ
+    match /{document=**} {
+      allow read: if isAdmin() && request.path[3] != "trade_quotes";
+      allow write: if isAdmin() && request.path[3] != "trade_quotes" && (request.path[3] != "admins" || isCoreAdmin());
+    }
+
+    // ユーザープロファイルと取引履歴は本人または運営だけが読める。
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false; // 書き込みは安全のため Cloud Functions からのみ許可
+
+      match /transactions/{txId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        allow write: if false;
+      }
+    }
+
+    // 管理画面のcollectionGroup取引ログ用。公開画面はpublic_transactionsを利用する。
+    match /{path=**}/transactions/{txId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /public_transactions/{txId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 短時間の約定価格見積もり。Admin SDKを使うCloud Functionsからのみ操作する。
+    match /trade_quotes/{quoteId} {
+      allow read, write: if false;
+    }
+
+    // 銘柄情報 (廊下サイネージ等のためにログイン不要で閲覧可能に)
+    match /stocks/{stockId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // パブリックマーケットデータおよびランキング (サイネージのために一般公開)
+    match /public_data/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ニュース (公開ニュースは一般公開、INSIDERニュースはINSIDER本人と管理者のみ)
+    match /news/{newsId} {
+      allow read: if resource.data.target == "ALL" || isInsiderUser();
+      allow write: if false;
+    }
+
+    // システム設定 (サイネージ・一般画面のために公開)
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // イベント (サイネージのシナリオ割り込み・動画事前取得用に一般公開)
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 旧サイネージ設定 (既存URL互換のため一般公開)
+    match /signages/{signageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // サイネージ設定 (廊下端末から読めるように一般公開)
+    match /public_signages/{sigId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 謎解き用部屋設定 (謎解きエリア端末から読めるように一般公開)
+    match /riddle_rooms/{roomId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 広告動画ライブラリ (サイネージ端末から読めるように一般公開)
+    match /ad_videos/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 動画ライブラリ (全サイネージ端末・シナリオ機能から共通利用、端末から読めるように一般公開)
+    match /video_library/{videoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 動画グループ (動画ライブラリの分類。端末からは読めるように一般公開、書き込みは管理者のみ)
+    match /video_groups/{groupId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 画像ライブラリ (サイネージ端末が画像プレイリストを表示するために一般公開)
+    match /image_library/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ニュースプリセット (サイネージ端末がイベントから参照するために一般公開)
+    // 機密情報をこのコレクションへ保存しないこと。INSIDER 向け配信済みニュースは
+    // /news の target 条件で引き続き保護する。
+    match /news_presets/{presetId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // スケジュールセッション (day1午前/午後などの区切り。管理者のみ)
+    match /schedule_sessions/{sessionId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 名前付きプレイリストライブラリ (管理画面のみで利用。管理者のみ)
+    match /signage_playlists/{playlistId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

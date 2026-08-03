@@ -1,0 +1,10 @@
+**
+!functions/package.json
+!functions/package-lock.json
+!functions/tsconfig.json
+!functions/src/**
+!firestore.rules
+!firestore.indexes.json
+!storage.rules
+!firebase.json
+!docker/scripts/**

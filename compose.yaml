@@ -1,0 +1,82 @@
+name: stock-league-event-local
+
+x-backend-environment: &backend-environment
+  GCLOUD_PROJECT: ${FIREBASE_PROJECT_ID:-demo-stock-league-event-local}
+  GOOGLE_CLOUD_PROJECT: ${FIREBASE_PROJECT_ID:-demo-stock-league-event-local}
+  FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-demo-stock-league-event-local}
+  FIRESTORE_EMULATOR_HOST: firebase:8080
+  FIREBASE_AUTH_EMULATOR_HOST: firebase:9099
+  FIREBASE_STORAGE_EMULATOR_HOST: firebase:9199
+  FUNCTIONS_EMULATOR: "true"
+  CI: "true"
+  NO_GCE_CHECK: "true"
+  FIREBASE_CLI_DISABLE_UPDATE_CHECK: "true"
+
+services:
+  firebase:
+    image: stock-league-event-local-backend
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.firebase
+    environment:
+      <<: *backend-environment
+      FIREBASE_DATA_DIR: /data/firebase
+    ports:
+      - "${FIREBASE_UI_PORT:-4000}:4000"
+      - "${FUNCTIONS_PORT:-5001}:5001"
+      - "${FIRESTORE_PORT:-8080}:8080"
+      - "${PUBSUB_PORT:-8085}:8085"
+      - "${AUTH_PORT:-9099}:9099"
+      - "${STORAGE_PORT:-9199}:9199"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  bootstrap:
+    image: stock-league-event-local-backend
+    entrypoint: ["node", "/workspace/docker/scripts/seed.cjs"]
+    environment:
+      <<: *backend-environment
+      LOCAL_ADMIN_EMAIL: ${LOCAL_ADMIN_EMAIL:?Set LOCAL_ADMIN_EMAIL in .env before starting}
+      LOCAL_ADMIN_PASSWORD: ${LOCAL_ADMIN_PASSWORD:?Set LOCAL_ADMIN_PASSWORD in .env before starting}
+    depends_on:
+      firebase:
+        condition: service_healthy
+    restart: "no"
+
+  runner:
+    image: stock-league-event-local-backend
+    entrypoint: ["node", "/workspace/docker/scripts/local-runner.cjs"]
+    environment:
+      <<: *backend-environment
+    depends_on:
+      firebase:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-demo-stock-league-event-local}
+        FUNCTIONS_PORT: ${FUNCTIONS_PORT:-5001}
+        FIRESTORE_PORT: ${FIRESTORE_PORT:-8080}
+        AUTH_PORT: ${AUTH_PORT:-9099}
+        STORAGE_PORT: ${STORAGE_PORT:-9199}
+    ports:
+      - "${WEB_PORT:-8098}:80"
+    depends_on:
+      firebase:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    restart: unless-stopped

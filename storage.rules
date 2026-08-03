@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.coreAdmin == true ||
+        request.auth.token.terminalAdmin == true ||
+        (
+          request.auth.token.email != null &&
+          firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email))
+        )
+      );
+    }
+
+    match /signage/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && request.resource.size < 500 * 1024 * 1024;
+    }
+  }
+}

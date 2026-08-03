@@ -1,0 +1,42 @@
+FROM node:24-bookworm-slim AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+# The current application lockfile can lag behind optional transitive packages
+# on newer npm releases. Keep the workspace untouched and reconcile only inside
+# the disposable build stage.
+RUN npm install --no-package-lock --no-audit --no-fund --dangerously-allow-all-scripts
+
+COPY tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY vite.config.ts index.html ./
+COPY public ./public
+COPY src ./src
+COPY functions/src/pricingCore.ts ./functions/src/pricingCore.ts
+
+ARG FIREBASE_PROJECT_ID=demo-stock-league-event-local
+ARG FUNCTIONS_PORT=5001
+ARG FIRESTORE_PORT=8080
+ARG AUTH_PORT=9099
+ARG STORAGE_PORT=9199
+ENV VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+ENV VITE_FIREBASE_STORAGE_BUCKET=${FIREBASE_PROJECT_ID}.appspot.com
+ENV VITE_FUNCTIONS_PORT=${FUNCTIONS_PORT}
+ENV VITE_FIRESTORE_PORT=${FIRESTORE_PORT}
+ENV VITE_AUTH_PORT=${AUTH_PORT}
+ENV VITE_STORAGE_PORT=${STORAGE_PORT}
+
+RUN npm run build \
+    && mkdir -p ./dist/mediapipe/wasm ./dist/mediapipe/models \
+    && cp ./node_modules/@mediapipe/tasks-vision/wasm/* ./dist/mediapipe/wasm/ \
+    && node -e "fetch('https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task').then(r=>{if(!r.ok)throw new Error(String(r.status));return r.arrayBuffer()}).then(b=>require('node:fs').writeFileSync('./dist/mediapipe/models/hand_landmarker.task',Buffer.from(b)))"
+
+FROM nginx:1.29-alpine
+
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1

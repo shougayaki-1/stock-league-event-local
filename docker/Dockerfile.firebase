@@ -1,0 +1,30 @@
+FROM node:24-trixie-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-21-jre-headless \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install --global firebase-tools@latest \
+    && firebase setup:emulators:firestore \
+    && firebase setup:emulators:pubsub \
+    && firebase setup:emulators:storage \
+    && firebase setup:emulators:ui
+
+WORKDIR /workspace
+
+COPY functions/package.json functions/package-lock.json ./functions/
+RUN npm ci --prefix functions --dangerously-allow-all-scripts \
+    && npm install --prefix functions --no-save --no-package-lock --no-audit --no-fund \
+      --dangerously-allow-all-scripts typescript@6.0.3 @types/node@24.12.2 @firebase/app@0.15.0
+
+COPY functions/tsconfig.json ./functions/tsconfig.json
+COPY functions/src ./functions/src
+COPY firestore.rules firestore.indexes.json storage.rules ./
+COPY firebase.json ./firebase.json
+COPY docker/scripts ./docker/scripts
+
+RUN npm run build --prefix functions \
+    && chmod +x ./docker/scripts/firebase-entrypoint.sh
+
+EXPOSE 4000 5001 8080 8085 9099 9199
+
+ENTRYPOINT ["/workspace/docker/scripts/firebase-entrypoint.sh"]

@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+@theme {
+  /* 日本の証券メンタルモデル（赤＝上昇/買、青＝下落/売） */
+  --color-trade-up: var(--color-red-500);
+  --color-trade-up-bg: var(--color-red-50);
+  --color-trade-down: var(--color-blue-500);
+  --color-trade-down-bg: var(--color-blue-50);
+
+  /* Google 風フォント（Roboto / Google Sans 相当） */
+  --font-sans: "Roboto", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================
+   Material Design 3 カラーロール
+   実値は :root / .dark で定義し、@theme inline で
+   ユーティリティ（bg-surface 等）に紐付ける。
+   .dark の上書きが実行時に反映される。
+========================================== */
+:root {
+  --md-primary: #1a73e8;            /* Google Blue */
+  --md-on-primary: #ffffff;
+  --md-primary-container: #d3e3fd;
+  --md-on-primary-container: #041e49;
+
+  --md-surface: #ffffff;
+  --md-surface-container: #f8f9fa;  /* やや沈んだ面 */
+  --md-surface-variant: #f1f3f4;
+  --md-on-surface: #1f1f1f;
+  --md-on-surface-variant: #5f6368; /* Google grey */
+
+  --md-outline: #dadce0;            /* 枠線グレー */
+  --md-outline-variant: #e8eaed;
+
+  --md-error: #d93025;              /* Google Red */
+  --md-on-error: #ffffff;
+  --md-error-container: #fce8e6;
+  --md-on-error-container: #410e0b;
+  --md-info: #1a73e8;
+  --md-info-container: #d3e3fd;
+  --md-on-info-container: #041e49;
+  --md-success: #1e8e3e;            /* Google Green */
+  --md-success-container: #e6f4ea;
+  --md-on-success-container: #0d3b1d;
+  --md-warning: #f29900;            /* Google Amber */
+  --md-warning-container: #fef7e0;
+  --md-on-warning-container: #3f2e00;
+
+  /* state layer（ホバー/プレスの半透明オーバーレイ） */
+  --md-state-on-surface: 31 31 31;  /* rgb 値（/<alpha> で使用） */
+}
+
+.dark {
+  --md-primary: #8ab4f8;
+  --md-on-primary: #062e6f;
+  --md-primary-container: #0842a0;
+  --md-on-primary-container: #d3e3fd;
+
+  --md-surface: #1e1f20;
+  --md-surface-container: #28292a;
+  --md-surface-variant: #2d2f31;
+  --md-on-surface: #e3e3e3;
+  --md-on-surface-variant: #c4c7c5;
+
+  --md-outline: #444746;
+  --md-outline-variant: #38393a;
+
+  --md-error: #f2b8b5;
+  --md-on-error: #601410;
+  --md-error-container: #4a1411;
+  --md-on-error-container: #f9dedc;
+  --md-info: #8ab4f8;
+  --md-info-container: #0842a0;
+  --md-on-info-container: #d3e3fd;
+  --md-success: #6dd58c;
+  --md-success-container: #0f3d22;
+  --md-on-success-container: #c4eed0;
+  --md-warning: #fdd663;
+  --md-warning-container: #443100;
+  --md-on-warning-container: #ffe8a3;
+
+  --md-state-on-surface: 227 227 227;
+}
+
+@theme inline {
+  --color-primary: var(--md-primary);
+  --color-on-primary: var(--md-on-primary);
+  --color-primary-container: var(--md-primary-container);
+  --color-on-primary-container: var(--md-on-primary-container);
+
+  --color-surface: var(--md-surface);
+  --color-surface-container: var(--md-surface-container);
+  --color-surface-variant: var(--md-surface-variant);
+  --color-on-surface: var(--md-on-surface);
+  --color-on-surface-variant: var(--md-on-surface-variant);
+
+  --color-outline: var(--md-outline);
+  --color-outline-variant: var(--md-outline-variant);
+
+  --color-error: var(--md-error);
+  --color-on-error: var(--md-on-error);
+  --color-error-container: var(--md-error-container);
+  --color-on-error-container: var(--md-on-error-container);
+  --color-info: var(--md-info);
+  --color-info-container: var(--md-info-container);
+  --color-on-info-container: var(--md-on-info-container);
+  --color-success: var(--md-success);
+  --color-success-container: var(--md-success-container);
+  --color-on-success-container: var(--md-on-success-container);
+  --color-warning: var(--md-warning);
+  --color-warning-container: var(--md-warning-container);
+  --color-on-warning-container: var(--md-on-warning-container);
+}
+
+@layer base {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ==========================================
+   Material Design 3 エレベーション（柔らかい影）
+========================================== */
+@layer utilities {
+  .elevation-1 {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.10);
+  }
+  .elevation-2 {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+  .elevation-3 {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.10);
+  }
+  .elevation-4 {
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.10);
+  }
+}
+
+/* ==========================================
+   カスタムアニメーションの定義
+========================================== */
+
+@keyframes stamp {
+  0% { opacity: 0; transform: scale(3) rotate(-20deg); }
+  50% { opacity: 1; transform: scale(0.9) rotate(-10deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-12deg); }
+}
+.animate-stamp {
+  animation: stamp 0.3s ease-out forwards;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-1 * var(--marquee-distance, 50%))); }
+}
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  display: inline-block;
+}
+
+@keyframes shrinkWidth {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.animate-shrink {
+  animation-name: shrinkWidth;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* ★ 追加: iPhone等 PWAでの Safe Area 対策 */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}

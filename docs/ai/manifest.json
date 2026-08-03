@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0.0",
+  "lastReviewed": "2026-08-04",
+  "application": {
+    "name": "Stock League Event Local",
+    "repository": "stock-league-event-local",
+    "purpose": "A fully local Docker application for running a stock-market learning event with trading, scenarios, news, signage, video, and puzzle-area operations.",
+    "deployment": "docker-compose-local-only",
+    "authoritativeRuntime": ["src/", "functions/src/", "compose.yaml", "firebase.json", "firestore.rules", "storage.rules"],
+    "defaultUrls": {
+      "web": "http://localhost:8098",
+      "participantLogin": "http://localhost:8098/login",
+      "adminLogin": "http://localhost:8098/admin/login",
+      "firebaseEmulatorUi": "http://localhost:4000"
+    }
+  },
+  "aiContract": {
+    "readBeforeActing": ["AGENTS.md", "docs/ai/README.md", "docs/ai/concepts.md", "docs/ai/screens.md", "docs/ai/operations.md"],
+    "safeDefault": "Observe, explain, propose, confirm, then mutate.",
+    "mcpServer": "tools/ai-context-server.mjs",
+    "mutationToolsExposed": false,
+    "secretsExcluded": [".env", "data/", ".firebase/", "Firebase Emulator exports", "participant PII", "event media"],
+    "destructiveActionsRequireHumanConfirmation": true
+  },
+  "actors": [
+    {"id": "participant", "auth": "Firebase Auth custom token issued by loginByShortId after short-ID verification", "routes": ["/login", "/"], "can": ["view own portfolio", "read public market/news", "submit own trades", "set nickname", "view own result"]},
+    {"id": "terminal", "auth": "Firebase Auth admin account with terminal role", "routes": ["/terminal", "/terminal/*"], "can": ["operate reception", "operate trade counter", "operate exchange counter", "operate classroom", "operate MC", "operate riddle signage"]},
+    {"id": "general_admin", "auth": "Firebase Auth admin account with general role", "routes": ["/admin/*", "/terminal/*"], "can": ["normal event operations", "manage participants", "manage scenarios", "manage signage and media"]},
+    {"id": "core_admin", "auth": "Firebase Auth admin account with core role", "routes": ["/admin/*", "/terminal/*"], "can": ["all general admin operations", "manage admins", "perform high-impact maintenance"]},
+    {"id": "public_signage", "auth": "none", "routes": ["/signage", "/signage/public", "/signage/riddle"], "can": ["read public display state", "cache media locally", "render signage"]}
+  ],
+  "lifecycle": ["bootstrap", "prepare", "open", "trade", "scenario_progression", "emergency_or_incident", "close", "backup"],
+  "globalPhase": {
+    "STOP": "Market is closed; trade callables reject new orders.",
+    "RUNNING": "Market is open; quotes and trade operations are allowed.",
+    "EMERGENCY": "Emergency presentation/price state is active; follow the MC and market control procedures."
+  },
+  "routes": [
+    {"path": "/", "screen": "participant-trade", "auth": "participant", "description": "Participant market, portfolio, news, help, history, and trade actions."},
+    {"path": "/login", "screen": "participant-login", "auth": "none", "description": "Participant QR or short-ID login and onboarding."},
+    {"path": "/admin/login", "screen": "admin-login", "auth": "none", "description": "Email/password operator login and role routing."},
+    {"path": "/result", "screen": "result", "auth": "participant", "description": "Finish/mission result screen and return to trading."},
+    {"path": "/info", "screen": "info-redirect", "auth": "none", "description": "Redirects to participant login help; use system setting to show Help after login."},
+    {"path": "/terminal", "screen": "terminal-home", "auth": "terminal-or-admin", "description": "Device-specific reception, brokerage, portfolio, QR, and gesture mode launcher."},
+    {"path": "/terminal/trade", "screen": "trade-counter", "auth": "terminal-or-admin", "description": "Staff-assisted buy/sell counter with offline memo support."},
+    {"path": "/terminal/exchange", "screen": "exchange-counter", "auth": "terminal-or-admin", "description": "Prize/exchange counter and participant status lookup."},
+    {"path": "/terminal/reception", "screen": "reception-counter", "auth": "terminal-or-admin", "description": "Reception/check-in and participant lookup."},
+    {"path": "/terminal/classroom", "screen": "classroom-operation", "auth": "terminal-or-admin", "description": "Classroom TV participant check-in/out and target display."},
+    {"path": "/terminal/mc", "screen": "mc-control", "auth": "terminal-or-admin", "description": "MC view of scenario progress and signage dispatch."},
+    {"path": "/terminal/signage-riddle", "screen": "riddle-signage-manage", "auth": "terminal-or-admin", "description": "Riddle area room and TV operation."},
+    {"path": "/admin/market", "screen": "market-control", "auth": "general-or-core-admin", "description": "Stocks, prices, phases, CSV import, emergency market actions."},
+    {"path": "/admin/scenario", "screen": "scenario-control", "auth": "general-or-core-admin", "description": "Scenario timeline, scheduled news/price changes, sessions, and run controls."},
+    {"path": "/admin/news-presets", "screen": "news-preset-library", "auth": "general-or-core-admin", "description": "Reusable public/post/insider news and breaking/signage settings."},
+    {"path": "/admin/mc", "screen": "mc-control", "auth": "general-or-core-admin", "description": "MC operations; same capability as terminal MC with admin layout."},
+    {"path": "/admin/users", "screen": "users-management", "auth": "general-or-core-admin", "description": "Participant IDs, nicknames, points, course, status, QR, CSV."},
+    {"path": "/admin/order-cards", "screen": "order-card-print", "auth": "general-or-core-admin", "description": "Print buy/sell, stock, and quantity cards."},
+    {"path": "/admin/logs", "screen": "transaction-logs", "auth": "general-or-core-admin", "description": "Live transaction monitoring and participant/stock filtering."},
+    {"path": "/admin/signage-public", "screen": "public-signage-manage", "auth": "general-or-core-admin", "description": "Public monitor targets, automatic/manual playlist dispatch, previews."},
+    {"path": "/admin/signage-riddle", "screen": "riddle-signage-manage", "auth": "general-or-core-admin", "description": "Riddle rooms, TV roles, steps, themes, and timing."},
+    {"path": "/admin/video-library", "screen": "video-library", "auth": "general-or-core-admin", "description": "Local video assets, groups, volume gain, previews, and references."},
+    {"path": "/admin/image-library", "screen": "image-library", "auth": "general-or-core-admin", "description": "Signage images, uploads, template output, previews, and references."},
+    {"path": "/admin/image-template-studio", "screen": "image-template-studio", "auth": "general-or-core-admin", "description": "Generate event-ready images from built-in templates."},
+    {"path": "/admin/signage-playlists", "screen": "signage-playlist-library", "auth": "general-or-core-admin", "description": "Named playlists combining videos and display presets."},
+    {"path": "/admin/system", "screen": "system-settings", "auth": "general-or-core-admin", "description": "Admins, prizes, common quantity presets, Help content, cache version, eco mode."},
+    {"path": "/admin/manual", "screen": "admin-manual", "auth": "general-or-core-admin", "description": "In-app operational manual."},
+    {"path": "/privacy", "screen": "privacy-policy", "auth": "none", "description": "Privacy policy document."},
+    {"path": "/terms", "screen": "terms-of-service", "auth": "none", "description": "Terms document."},
+    {"path": "/signage", "screen": "legacy-signage", "auth": "none", "query": "id=<signage_id>", "description": "Legacy/simple market and news signage renderer; prefer /signage/public for managed public monitors."},
+    {"path": "/signage/public", "screen": "public-signage", "auth": "none", "query": "id=<public_signage_id>", "description": "Public monitor renderer with local media cache."},
+    {"path": "/signage/riddle", "screen": "riddle-signage", "auth": "none", "query": "roomId=<riddle_room_id>&role=<tv_role>", "description": "Riddle room TV renderer."}
+  ],
+  "firestore": {
+    "collections": ["users", "stocks", "settings", "public_data", "internal", "events", "news", "scheduled_post_news", "admins", "public_signages", "riddle_rooms", "video_library", "video_groups", "image_library", "signage_playlists", "schedule_sessions", "news_presets", "trade_quotes", "public_transactions"],
+    "derivedDocuments": ["settings/system", "settings/prizes", "settings/classroom_operation", "public_data/market_for_users", "public_data/ranking", "internal/price_engine"],
+    "userSubcollection": "users/{uid}/transactions"
+  },
+  "resources": [
+    {"uri": "stock-league://ai/README", "path": "docs/ai/README.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/concepts", "path": "docs/ai/concepts.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/screens", "path": "docs/ai/screens.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/operations", "path": "docs/ai/operations.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/data-model", "path": "docs/ai/data-model.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/troubleshooting", "path": "docs/ai/troubleshooting.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/prompts", "path": "docs/ai/prompts.md", "mimeType": "text/markdown", "readOnly": true},
+    {"uri": "stock-league://ai/manifest", "path": "docs/ai/manifest.json", "mimeType": "application/json", "readOnly": true},
+    {"uri": "stock-league://ai/mcp", "path": "docs/ai/mcp.md", "mimeType": "text/markdown", "readOnly": true}
+  ],
+  "prompts": ["orient", "operate-event", "review-change", "troubleshoot"],
+  "notImplemented": ["Friday morning session finder/restorer", "production cloud deployment", "automatic external SaaS synchronization"]
+}
